@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EpiSim-ABM: Agent-Based Epidemic & Policy Simulator</title>
+  <meta name="description" content="An interactive Agent-Based Modeling simulation showing real-time epidemic spread and dynamic public health policy analysis in a structured visual spatial model.">
+  <!-- Google Fonts: Outfit and Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+      <div class="logo-area">
+        <i class="fa-solid fa-virus-covid logo-icon"></i>
+        <div class="logo-text">
+          <h1>EpiSim-ABM</h1>
+          <span>Applied AI: Agent-Based Modeling</span>
+        </div>
+      </div>
+      <nav class="app-nav">
+        <button class="nav-btn active" id="btn-tab-sim" onclick="switchTab('sim')">
+          <i class="fa-solid fa-gamepad"></i> Simulation
+        </button>
+        <button class="nav-btn" id="btn-tab-exp" onclick="switchTab('exp')">
+          <i class="fa-solid fa-chart-line"></i> Experiments
+        </button>
+        <button class="nav-btn" id="btn-tab-slides" onclick="switchTab('slides')">
+          <i class="fa-solid fa-presentation-screen"></i> Presentation
+        </button>
+        <button class="nav-btn" id="btn-tab-rationale" onclick="switchTab('rationale')">
+          <i class="fa-solid fa-book-open"></i> Rationale
+        </button>
+      </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- SIDEBAR: Real-time System Status & Simulation Controls -->
+      <aside class="app-sidebar">
+        <div class="sidebar-section">
+          <h3><i class="fa-solid fa-sliders"></i> Engine Controls</h3>
+          <div class="controls-grid">
+            <button id="btn-play-pause" class="btn btn-primary" onclick="togglePlay()">
+              <i class="fa-solid fa-play"></i> <span>Play</span>
+            </button>
+            <button id="btn-step" class="btn btn-secondary" onclick="stepSimulation()">
+              <i class="fa-solid fa-forward-step"></i> Step
+            </button>
+            <button id="btn-restart" class="btn btn-danger" onclick="restartSimulation()">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+            <button id="btn-preset-outbreak" class="btn btn-warning" onclick="triggerOutbreak()">
+              <i class="fa-solid fa-biohazard"></i> Infect 5
+            </button>
+          </div>
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="input-sim-speed">Simulation Speed</label>
+              <span id="label-sim-speed">1x</span>
+            </div>
+            <input type="range" id="input-sim-speed" min="1" max="10" value="1" oninput="updateSpeed(this.value)">
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h3><i class="fa-solid fa-clock"></i> Simulation Clock</h3>
+          <div class="clock-display">
+            <div class="clock-item">
+              <span class="clock-label">Day</span>
+              <span id="stat-day" class="clock-val">1</span>
+            </div>
+            <div class="clock-item">
+              <span class="clock-label">Time</span>
+              <span id="stat-hour" class="clock-val">08:00</span>
+            </div>
+          </div>
+          <div class="clock-progress-bar">
+            <div id="clock-progress-fill" style="width: 33%"></div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h3><i class="fa-solid fa-hospital"></i> Healthcare System</h3>
+          <div class="hospital-gauge-container">
+            <div class="gauge-meta">
+              <span>ICU Beds Occupied</span>
+              <span id="stat-icu-percent">0%</span>
+            </div>
+            <div class="gauge-bar">
+              <div id="icu-gauge-fill" class="gauge-fill" style="width: 0%"></div>
+            </div>
+            <div class="gauge-labels">
+              <span>0 / 100 Beds</span>
+              <span class="danger-marker">Limit (100)</span>
+            </div>
+          </div>
+          <div id="hospital-status-card" class="status-card secure">
+            <i class="fa-solid fa-circle-check"></i>
+            <div>
+              <h4>Capacity Secure</h4>
+              <p>Hospitals are operating normally.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-section quick-stats-section">
+          <h3><i class="fa-solid fa-users"></i> Agent States</h3>
+          <div class="agent-count-list">
+            <div class="agent-count-item sus">
+              <span class="indicator"></span>
+              <span class="label">Susceptible</span>
+              <span id="count-sus" class="val">1,000</span>
+            </div>
+            <div class="agent-count-item exp">
+              <span class="indicator"></span>
+              <span class="label">Exposed</span>
+              <span id="count-exp" class="val">0</span>
+            </div>
+            <div class="agent-count-item inf-asym">
+              <span class="indicator"></span>
+              <span class="label">Infectious (Asym)</span>
+              <span id="count-inf-asym" class="val">0</span>
+            </div>
+            <div class="agent-count-item inf-sym">
+              <span class="indicator"></span>
+              <span class="label">Infectious (Sym)</span>
+              <span id="count-inf-sym" class="val">0</span>
+            </div>
+            <div class="agent-count-item rec">
+              <span class="indicator"></span>
+              <span class="label">Recovered / Immune</span>
+              <span id="count-rec" class="val">0</span>
+            </div>
+            <div class="agent-count-item dec">
+              <span class="indicator"></span>
+              <span class="label">Deceased</span>
+              <span id="count-dec" class="val">0</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- VIEWPORT: Swapped content based on current active tab -->
+      <section class="app-viewport">
+        
+        <!-- TAB 1: LIVE SIMULATION -->
+        <div id="tab-sim" class="tab-content active">
+          <div class="simulation-layout">
+            <!-- Left Column: Spatial Visual Board -->
+            <div class="sim-left">
+              <div class="canvas-header">
+                <h2><i class="fa-solid fa-map-location-dot"></i> Spatial Environment</h2>
+                <div class="view-toggles">
+                  <span class="toggle-tag residential"><i class="fa-solid fa-house"></i> Home Zones</span>
+                  <span class="toggle-tag commercial"><i class="fa-solid fa-briefcase"></i> Work Zones</span>
+                  <span class="toggle-tag recreational"><i class="fa-solid fa-tree"></i> Public Hubs</span>
+                </div>
+              </div>
+              <div class="canvas-container">
+                <canvas id="sim-canvas" width="650" height="520"></canvas>
+                <!-- Interactive Overlay for Initial Infection Spawning -->
+                <div id="canvas-overlay" class="hidden">Click on the grid to spawn infections</div>
+              </div>
+              <div class="canvas-footer">
+                <span class="tip"><i class="fa-solid fa-lightbulb"></i> Tip: Agents commute based on time of day. Work density peaks between 09:00 and 17:00.</span>
+              </div>
+            </div>
+
+            <!-- Right Column: Interactive Parameters & Live Charts -->
+            <div class="sim-right">
+              <!-- Live Epidemiological Chart -->
+              <div class="dashboard-panel chart-panel">
+                <div class="panel-header">
+                  <h3><i class="fa-solid fa-chart-area"></i> Epidemiological Curve</h3>
+                  <div class="chart-legend">
+                    <span class="legend-item legend-sus">S</span>
+                    <span class="legend-item legend-inf">I</span>
+                    <span class="legend-item legend-rec">R</span>
+                    <span class="legend-item legend-dec">D</span>
+                  </div>
+                </div>
+                <div class="chart-container" id="svg-chart-container">
+                  <svg id="live-curve-svg" viewBox="0 0 400 150" preserveAspectRatio="none">
+                    <!-- Dynamic chart lines will be drawn here -->
+                  </svg>
+                  <div class="no-data" id="chart-no-data">Simulation starting... Run engine to plot curves.</div>
+                </div>
+              </div>
+
+              <!-- Parameter Control Center -->
+              <div class="dashboard-panel settings-panel">
+                <div class="panel-header">
+                  <h3><i class="fa-solid fa-gears"></i> Intervention Policy Center</h3>
+                  <button class="btn-text" onclick="resetSliders()"><i class="fa-solid fa-undo"></i> Reset Settings</button>
+                </div>
+                <div class="settings-grid">
+                  <!-- Disease parameters -->
+                  <div class="settings-column">
+                    <h4><i class="fa-solid fa-shield-virus"></i> Virus Profile</h4>
+                    
+                    <div class="slider-group">
+                      <div class="slider-header">
+                        <label for="param-trans">Infectious Transmission Prob</label>
+                        <span id="val-trans">8%</span>
+                      </div>
+                      <input type="range" id="param-trans" min="2" max="30" value="8" step="1">
+                    </div>
+
+                    <div class="slider-group">
+                      <div class="slider-header">
+                        <label for="param-radius">Transmission Radius</label>
+                        <span id="val-radius">12px</span>
+                      </div>
+                      <input type="range" id="param-radius" min="5" max="30" value="12" step="1">
+                    </div>
+
+                    <div class="slider-group">
+                      <div class="slider-header">
+                        <label for="param-asym-ratio">Asymptomatic Case Ratio</label>
+                        <span id="val-asym-ratio">30%</span>
+                      </div>
+                      <input type="range" id="param-asym-ratio" min="10" max="80" value="30" step="5">
+                    </div>
+                  </div>
+
+                  <!-- Policies parameters -->
+                  <div class="settings-column">
+                    <h4><i class="fa-solid fa-building-shield"></i> Active Interventions</h4>
+                    
+                    <div class="policy-toggle-group">
+                      <div class="toggle-row">
+                        <div class="toggle-meta">
+                          <label for="policy-mask"><i class="fa-solid fa-head-side-mask"></i> Mask Mandate</label>
+                          <p>Reduces spread by 65%</p>
+                        </div>
+                        <input type="checkbox" id="policy-mask" class="toggle-switch">
+                      </div>
+
+                      <div class="toggle-row">
+                        <div class="toggle-meta">
+                          <label for="policy-lockdown"><i class="fa-solid fa-door-closed"></i> Lockdown Protocol</label>
+                          <p>Restricts non-essential agent commutes</p>
+                        </div>
+                        <input type="checkbox" id="policy-lockdown" class="toggle-switch">
+                      </div>
+
+                      <div class="toggle-row">
+                        <div class="toggle-meta">
+                          <label for="policy-vaccine"><i class="fa-solid fa-syringe"></i> Vaccination Campaign</label>
+                          <p>Doses active health immunization</p>
+                        </div>
+                        <input type="checkbox" id="policy-vaccine" class="toggle-switch">
+                      </div>
+                    </div>
+
+                    <div class="slider-group" id="vaccine-rate-container">
+                      <div class="slider-header">
+                        <label for="param-vac-rate">Daily Vaccination Rate</label>
+                        <span id="val-vac-rate">5 / Day</span>
+                      </div>
+                      <input type="range" id="param-vac-rate" min="1" max="20" value="5" step="1">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: POLICY EXPERIMENTATION -->
+        <div id="tab-exp" class="tab-content">
+          <div class="experiment-wrapper">
+            <div class="experiment-intro">
+              <h2><i class="fa-solid fa-flask"></i> Comparative Scenario Analysis</h2>
+              <p>Compare the epidemiological outcomes of three typical policy scenarios running in fast-forward mode: <strong>Free-Spread (No Action)</strong>, <strong>Dynamic Lockdown Only</strong>, and <strong>High Vaccination Compliance</strong>.</p>
+            </div>
+
+            <div class="experiment-control-box">
+              <button class="btn btn-primary btn-large" id="btn-run-experiment" onclick="runComparativeExperiment()">
+                <i class="fa-solid fa-circle-play"></i> Run Scenarios Now (30-Day Ticks)
+              </button>
+              <div id="experiment-loading" class="hidden">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Processing 3,000 simulated agent paths in fast-forward...
+              </div>
+            </div>
+
+            <!-- Grid of Results -->
+            <div class="experiment-results-grid">
+              <!-- Scenario 1: Free Spread -->
+              <div class="scenario-card" id="card-scen-free">
+                <div class="scenario-header">
+                  <span class="badge badge-danger">Scenario A</span>
+                  <h3>Free Spread (No Policy)</h3>
+                </div>
+                <div class="scenario-stats">
+                  <div class="scen-stat-item">
+                    <span class="label">Peak Infection Rate</span>
+                    <span id="scen-a-peak" class="val">--</span>
+                  </div>
+                  <div class="scen-stat-item">
+                    <span class="label">Total Mortality</span>
+                    <span id="scen-a-death" class="val">--</span>
+                  </div>
+                  <div class="scen-stat-item">
+                    <span class="label">Healthcare Exhaustion</span>
+                    <span id="scen-a-exhaust" class="val">--</span>
+                  </div>
+                </div>
+                <div class="scen-chart-container">
+                  <svg id="scen-a-svg" class="mini-scen-svg" viewBox="0 0 200 80"></svg>
+                </div>
+              </div>
+
+              <!-- Scenario 2: Lockdown Policy -->
+              <div class="scenario-card" id="card-scen-lock">
+                <div class="scenario-header">
+                  <span class="badge badge-warning">Scenario B</span>
+                  <h3>Dynamic Lockdown</h3>
+                </div>
+                <div class="scenario-stats">
+                  <div class="scen-stat-item">
+                    <span class="label">Peak Infection Rate</span>
+                    <span id="scen-b-peak" class="val">--</span>
+                  </div>
+                  <div class="scen-stat-item">
+                    <span class="label">Total Mortality</span>
+                    <span id="scen-b-death" class="val">--</span>
+                  </div>
+                  <div class="scen-stat-item">
+                    <span class="label">Healthcare Exhaustion</span>
+                    <span id="scen-b-exhaust" class="val">--</span>
+                  </div>
+                </div>
+                <div class="scen-chart-container">
+                  <svg id="scen-b-svg" class="mini-scen-svg" viewBox="0 0 200 80"></svg>
+                </div>
+              </div>
+
+              <!-- Scenario 3: Vaccination Campaign -->
+              <div class="scenario-card" id="card-scen-vacc">
+                <div class="scenario-header">
+                  <span class="badge badge-success">Scenario C</span>
+                  <h3>Vaccination Campaign</h3>
+                </div>
+                <div class="scenario-stats">
+                  <div class="scen-stat-item">
+                    <span class="label">Peak Infection Rate</span>
+                    <span id="scen-c-peak" class="val">--</span>
+                  </div>
+                  <div class="scen-stat-item">
+                    <span class="label">Total Mortality</span>
+                    <span id="scen-c-death" class="val">--</span>
+                  </div>
+                  <div class="scen-stat-item">
+                    <span class="label">Healthcare Exhaustion</span>
+                    <span id="scen-c-exhaust" class="val">--</span>
+                  </div>
+                </div>
+                <div class="scen-chart-container">
+                  <svg id="scen-c-svg" class="mini-scen-svg" viewBox="0 0 200 80"></svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Unified Comparison Analytics Chart -->
+            <div class="dashboard-panel comp-panel hidden" id="comparison-analysis-panel">
+              <h3><i class="fa-solid fa-chart-simple"></i> Epidemic Containment Efficacy Comparison</h3>
+              <div class="comp-chart-grid">
+                <div class="comp-chart-bar-container">
+                  <span class="chart-title">Total Deceased Comparison (Lower is Better)</span>
+                  <div class="bar-chart-visual">
+                    <div class="bar-group">
+                      <span class="bar-label">Scenario A (Free)</span>
+                      <div class="bar-wrapper"><div id="bar-death-a" class="bar bg-red" style="width: 0%"></div></div>
+                      <span id="bar-val-death-a" class="bar-val">0</span>
+                    </div>
+                    <div class="bar-group">
+                      <span class="bar-label">Scenario B (Lock)</span>
+                      <div class="bar-wrapper"><div id="bar-death-b" class="bar bg-yellow" style="width: 0%"></div></div>
+                      <span id="bar-val-death-b" class="bar-val">0</span>
+                    </div>
+                    <div class="bar-group">
+                      <span class="bar-label">Scenario C (Vacc)</span>
+                      <div class="bar-wrapper"><div id="bar-death-c" class="bar bg-green" style="width: 0%"></div></div>
+                      <span id="bar-val-death-c" class="bar-val">0</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="comp-text-analysis">
+                  <h4><i class="fa-solid fa-circle-info"></i> Simulation Findings</h4>
+                  <p id="experiment-findings-p">Run scenarios to generate academic comparisons. The simulation engine will evaluate spatial spreads using dynamic seed matrices.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: ACADEMIC PRESENTATION -->
+        <div id="tab-slides" class="tab-content">
+          <div class="slide-container-outer">
+            <!-- Slide Stage -->
+            <div class="slide-stage" id="slide-stage">
+              
+              <!-- Slide 1: Title -->
+              <div class="slide-card active" id="slide-1">
+                <div class="slide-badge">Applied AI Project</div>
+                <h1 class="slide-title font-outfit">EpiSim-ABM</h1>
+                <h2 class="slide-subtitle">Agent-Based Epidemiological Simulator & Policy Evaluation Framework</h2>
+                <div class="slide-divider"></div>
+                <div class="slide-meta">
+                  <p><strong>Prepared by:</strong> Individual Research Project</p>
+                  <p><strong>Focus:</strong> Spatial Agent Dynamics & Emergent Phenomena</p>
+                  <p><strong>Framework:</strong> Vanilla Custom JS High-Performance Engine</p>
+                </div>
+              </div>
+
+              <!-- Slide 2: Rationale & Approach -->
+              <div class="slide-card" id="slide-2">
+                <h2 class="slide-section-title">1. Theoretical Rationale</h2>
+                <h3 class="slide-title-sm">Why Agent-Based Modeling (ABM) for Epidemics?</h3>
+                <div class="slide-grid-2">
+                  <div class="slide-bullets">
+                    <h4>Traditional Models (SIR / Differential)</h4>
+                    <ul>
+                      <li>Assumes homogenous populations (everyone has same transmission risk).</li>
+                      <li>Assumes perfect mixing (no spatial segregation or local clusters).</li>
+                      <li>Incapable of modeling individual behavioral changes (e.g. self-quarantine, vaccine hesitancy).</li>
+                    </ul>
+                  </div>
+                  <div class="slide-bullets highlight">
+                    <h4>EpiSim-ABM Approach</h4>
+                    <ul>
+                      <li><strong>Demographic Heterogeneity:</strong> Unique agent attributes (Age, Health, Compliances, Hesitancy).</li>
+                      <li><strong>Spatial Heterogeneity:</strong> Clear diurnal commuting routines between Homes, Offices, and Parks.</li>
+                      <li><strong>Policy Responsiveness:</strong> Agents respond behaviorally to mask mandates and lockdown rules dynamically.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Slide 3: Model Architecture -->
+              <div class="slide-card" id="slide-3">
+                <h2 class="slide-section-title">2. Model Architecture</h2>
+                <h3 class="slide-title-sm">Agent Decision Flow & State Transition Matrices</h3>
+                <div class="slide-architecture-container">
+                  <div class="arch-col">
+                    <h4>Daily Schedule Cycle</h4>
+                    <div class="arch-flow">
+                      <div class="flow-step"><i class="fa-solid fa-bed"></i> <strong>00:00 - 08:00</strong><br>Sleep at Home</div>
+                      <div class="flow-step"><i class="fa-solid fa-arrow-right"></i></div>
+                      <div class="flow-step"><i class="fa-solid fa-briefcase"></i> <strong>08:00 - 16:00</strong><br>Commute to Work</div>
+                      <div class="flow-step"><i class="fa-solid fa-arrow-right"></i></div>
+                      <div class="flow-step"><i class="fa-solid fa-tree"></i> <strong>16:00 - 20:00</strong><br>Leisure at Public Parks</div>
+                    </div>
+                  </div>
+                  <div class="arch-col">
+                    <h4>SEIRD State Transitions</h4>
+                    <div class="arch-states-diagram">
+                      <span class="state-circle sus">S</span>
+                      <span class="arrow"><i class="fa-solid fa-arrow-right-long"></i></span>
+                      <span class="state-circle exp">E</span>
+                      <span class="arrow"><i class="fa-solid fa-arrow-right-long"></i></span>
+                      <div class="double-arrow">
+                        <span class="state-circle inf">I</span>
+                        <div class="split-arrows">
+                          <span><i class="fa-solid fa-arrow-trend-up"></i> <span class="state-circle rec">R</span></span>
+                          <span><i class="fa-solid fa-arrow-trend-down"></i> <span class="state-circle dec">D</span></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Slide 4: Simulation Metrics (Dynamic!) -->
+              <div class="slide-card" id="slide-4">
+                <h2 class="slide-section-title">3. Dynamic Simulation Results</h2>
+                <h3 class="slide-title-sm">Metrics Captured from Your Most Recent Active Run</h3>
+                <div class="slide-stats-display">
+                  <div class="stat-large-box">
+                    <span class="label">Total Days Tracked</span>
+                    <span id="slide-stat-days" class="number">--</span>
+                  </div>
+                  <div class="stat-large-box">
+                    <span class="label">Total Infection Attack Rate</span>
+                    <span id="slide-stat-attack" class="number">--</span>
+                  </div>
+                  <div class="stat-large-box">
+                    <span class="label">Peak Active Infections</span>
+                    <span id="slide-stat-peak" class="number">--</span>
+                  </div>
+                  <div class="stat-large-box">
+                    <span class="label">Mortality Rate</span>
+                    <span id="slide-stat-mortality" class="number">--</span>
+                  </div>
+                </div>
+                <div class="slide-footer-note">
+                  <p><i class="fa-solid fa-circle-exclamation"></i> Note: These numbers will auto-update as you play the active simulation in Tab 1!</p>
+                </div>
+              </div>
+
+              <!-- Slide 5: Critical Analysis & Limits -->
+              <div class="slide-card" id="slide-5">
+                <h2 class="slide-section-title">4. Critical Analysis</h2>
+                <h3 class="slide-title-sm">Evaluation, Limitations & Academic Defense Focus</h3>
+                <div class="slide-grid-2">
+                  <div class="slide-bullets">
+                    <h4>Assumptions & Boundaries</h4>
+                    <ul>
+                      <li>Closed local space (no inter-city travel or import cases).</li>
+                      <li>Grid locations act as absolute point boundaries (homogenous density per building zone).</li>
+                      <li>Perfect compliance matching slider ratios.</li>
+                    </ul>
+                  </div>
+                  <div class="slide-bullets">
+                    <h4>Key Limitations & Future Scope</h4>
+                    <ul>
+                      <li><strong>Immunity Decay:</strong> Add multi-strain virus variations and seasonal mutations.</li>
+                      <li><strong>Social Networks:</strong> Move from random contact to explicit household and friendship graphs.</li>
+                      <li><strong>Economic Factors:</strong> Model agent compliance based on financial loss of quarantine.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Slide Deck Controls -->
+            <div class="slide-controls">
+              <button class="btn btn-secondary" onclick="prevSlide()"><i class="fa-solid fa-chevron-left"></i> Previous</button>
+              <div class="slide-indicator">
+                <span class="dot active" onclick="jumpToSlide(1)"></span>
+                <span class="dot" onclick="jumpToSlide(2)"></span>
+                <span class="dot" onclick="jumpToSlide(3)"></span>
+                <span class="dot" onclick="jumpToSlide(4)"></span>
+                <span class="dot" onclick="jumpToSlide(5)"></span>
+              </div>
+              <button class="btn btn-secondary" onclick="nextSlide()">Next <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: PROJECT RATIONALE PAPER -->
+        <div id="tab-rationale" class="tab-content">
+          <div class="rationale-doc-wrapper">
+            <article class="academic-paper">
+              <header class="paper-header">
+                <p class="journal-tag">Applied AI - Academic Project Rationale Report</p>
+                <h1 class="paper-title">EpiSim-ABM: Evaluating Spatial Public Health Interventions via Complex Agent-Based Spatial Modeling</h1>
+                <div class="paper-authors">
+                  <div class="author-block">
+                    <strong>Course Assignment: Applied AI Course</strong>
+                    <span>Department of Computer Science & Intelligent Systems</span>
+                  </div>
+                </div>
+              </header>
+
+              <hr class="academic-divider">
+
+              <!-- Abstract -->
+              <section class="paper-section paper-abstract">
+                <h3>Abstract</h3>
+                <p>Mathematical modeling of infectious diseases has traditionally relied on compartmental differential equations (e.g., standard SIR models), which operate under assumptions of homogeneous mixing and static population characteristics. This paper presents <strong>EpiSim-ABM</strong>, an Agent-Based Model written from first principles in high-performance JavaScript to simulate the spatial spreading of an aerosol pathogen inside a bounded municipal ecosystem. By structuring the spatial boundaries into specific household, workplace, and leisure nodes, and scheduling diurnal commuting trajectories, we analyze how heterogeneous agent demographics (age profiles, mask compliance indices, vaccine hesitancy) lead to emergent macroscopic infectious curves. We evaluate three health policy scenarios: uncontained spread, threshold-based dynamic lockdowns, and proactive targeted vaccination campaigns, demonstrating that agent behavioral compliance scales non-linearly with containment outcomes, providing a richer, context-aware policy tool than traditional epidemiological formulas.</p>
+              </section>
+
+              <!-- Section 1 -->
+              <section class="paper-section">
+                <h3>1. Introduction & Problem Definition</h3>
+                <p>Epidemic control represents a complex, non-linear system where micro-level interactions between individuals generate macro-level patterns of viral spread. In standard compartment models, a population is divided into susceptible, infectious, and recovered pools, with transitions governed by system-wide rates (e.g., $dS/dt = -\beta SI$). While computationally simple, these models assume that any individual is equally likely to contact any other, ignoring structural spatial environments (e.g. household clustering) and individual variances in daily routes.</p>
+                <p>To overcome these limitations, this project implements an <strong>Agent-Based Modeling (ABM)</strong> framework. The objective is to design and evaluate an executable system that bridges spatial mobility, virus exposure metrics, and government policy thresholds. By defining distinct physical structures (homes, offices, recreation hubs) and routing agents through daily schedule vectors, we model infectious spread at the exact point of interaction, highlighting the localized emergence of "super-spreading" events.</p>
+              </section>
+
+              <!-- Section 2 -->
+              <section class="paper-section">
+                <h3>2. System Design & Agent Formalisms</h3>
+                <p>EpiSim-ABM represents the environment as a continuous spatial grid bounded by functional hubs. The population consists of $N = 1,000$ autonomous agents, each instantiated with a unique set of demographic and behavioral traits.</p>
+                
+                <h4>2.1 Agent Attributes</h4>
+                <p>Each agent $A_i$ is defined by a multi-dimensional state tuple:</p>
+                <div class="equation-box">
+                  $$A_i = \langle H_i, Age_i, M_i, C_{mask}, C_{lock}, H_{vac}, State_{health} \rangle$$
+                </div>
+                <ul>
+                  <li><strong>Household $H_i$:</strong> A assigned home coordinate cluster where the agent starts and ends the daily cycle.</li>
+                  <li><strong>Age Profile $Age_i$:</strong> Allocated via standard demographic distribution (10% Elderly, 60% Adults, 30% Youth). Age directly dictates the conditional probability of severe symptoms, hospitalization, and mortality upon infection.</li>
+                  <li><strong>Mobility Index $M_i$:</strong> Baseline speed and probability of commuting to optional recreational spots.</li>
+                  <li><strong>Mask Compliance $C_{mask}$:</strong> Bounded probability $[0, 1]$ that the agent wears a surgical mask in public settings.</li>
+                  <li><strong>Lockdown Adherence $C_{lock}$:</strong> Willingness to comply with home-quarantine orders during lockdown emergencies.</li>
+                  <li><strong>Vaccine Hesitancy $H_{vac}$:</strong> Probability threshold dictating whether the agent will accept or refuse an immunization dose from clinics.</li>
+                </ul>
+
+                <h4>2.2 Spatial Environment & Diurnal Scheduling</h4>
+                <p>The space is partitioned into five distinct coordinate zone types: homes, workspaces, schools, recreational parks, and clinics. Agent commutes are governed by a global 24-hour synchronized clock:</p>
+                <ul>
+                  <li><strong>00:00 - 08:00 (Night):</strong> Agents reside in their designated Household coordinates. Local transmission can occur between co-habitants, simulating high household secondary attack rates.</li>
+                  <li><strong>08:00 - 16:00 (Daytime Work/School):</strong> Work-active agents travel toward designated high-density commercial blocks, while youth agents move to school clusters. Densities in these blocks peak, modeling high occupational exposure.</li>
+                  <li><strong>16:00 - 20:00 (Evening Leisure):</strong> Agents have set odds of commuting to recreation zones (public parks/shops), simulating random public contact.</li>
+                  <li><strong>20:00 - 00:00 (Return home):</strong> Agents travel back to their household coordinates.</li>
+                </ul>
+              </section>
+
+              <!-- Section 3 -->
+              <section class="paper-section">
+                <h3>3. Health States & Viral Transmission Physics</h3>
+                <p>The biological state transitions follow a modified SEIRD sequence:</p>
+                
+                <div class="academic-image-placeholder">
+                  <div class="diagram-flow">
+                    <span class="badge badge-grey">Susceptible (S)</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <span class="badge badge-yellow">Exposed (E)</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <div class="branch">
+                      <span class="badge badge-orange">Asymptomatic (I_A)</span>
+                      <span class="badge badge-red">Symptomatic (I_S)</span>
+                    </div>
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <div class="branch">
+                      <span class="badge badge-success">Recovered (R)</span>
+                      <span class="badge badge-black">Deceased (D)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <h4>3.1 Exposure Formula</h4>
+                <p>Transmission occurs spatially. At each time tick, for any susceptible agent $A_s$ located within physical distance $r$ of an active infectious agent $A_i$ (either symptomatic or asymptomatic), transmission occurs based on a daily probability vector:</p>
+                <div class="equation-box">
+                  $$P(Spread) = P_{base} \times (1 - \epsilon_{mask\_s} \cdot C_{mask\_s}) \times (1 - \epsilon_{mask\_i} \cdot C_{mask\_i})$$
+                </div>
+                <p>where $P_{base}$ is the viral infectivity parameter, and $\epsilon_{mask}$ represents mask effectiveness (configured at 65%). If transmission is triggered, the agent moves from <strong>Susceptible (S)</strong> to <strong>Exposed (E)</strong> state, entering a latent non-infectious phase (incubation) for a configurable duration (default: 4-6 days).</p>
+
+                <h4>3.2 Disease Progression & Hospitalization</h4>
+                <p>Upon incubation completion, agents split into **Asymptomatic (I_A)** (30% probability, travels normally) or **Symptomatic (I_S)** (70% probability, speed reduced by 80%, quarantines if compliant). After 8-12 days of active infection, agents transition to **Recovered (R)** or experience severe health failure requiring hospital admission. Hospitalized agents are added to the global ICU queue. If ICU load exceeds capacity (100 beds), the conditional death rate for queued patients increases by a factor of 3x due to medical resource scarcity, modeling the emergent hazard of healthcare systems collapse.</p>
+              </section>
+
+              <!-- Section 4 -->
+              <section class="paper-section">
+                <h3>4. Policy Simulation Experiments</h3>
+                <p>Using the embedded Experimentation tab, we simulated the system under three policy structures to observe differences in epidemiological peak indices, total mortality, and system stress:</p>
+                <ol>
+                  <li><strong>Free Spread Scenario:</strong> Zero interventions active. This serves as the control cohort. Results show rapid explosive spread, high peak infection (exceeding 45% active cases simultaneously), and immediate hospital overflow, resulting in massive excess deaths.</li>
+                  <li><strong>Dynamic Lockdown Scenario:</strong> Activated automatically when active symptomatic cases exceed 5% of the total population. Lockdown halts non-essential daily commutes, returning compliant agents to household boundaries. This results in the classic "Flattening the Curve" effect, keeping hospitalization under critical margins, although it prolongs the duration of the epidemic.</li>
+                  <li><strong>High Vaccination Campaign:</strong> Vaccination clinics immunize 5 agents per day. Immunized agents have 95% protection against contracting the virus and 100% protection against severe hospitalization. This breaks the transmission chains entirely, suppressing the virus rapidly with negligible mortality.</li>
+                </ol>
+              </section>
+
+              <!-- Section 5 -->
+              <section class="paper-section">
+                <h3>5. Critical Evaluation & Academic Defense</h3>
+                <p>While EpiSim-ABM demonstrates excellent explanatory power regarding micro-spatial clusters and the emergent non-linear benefits of rapid vaccinations, critical limitations exist:</p>
+                <ul>
+                  <li><strong>Local Boundary Constraints:</strong> The grid acts as a closed ecosystem. In real-world policies, external seeding (imported travel cases) requires active screening at border thresholds, which our system omits.</li>
+                  <li><strong>Homogeneous Spacing Inside Zones:</strong> Although agents commute to office grids, their physical distribution inside the office boundary is modeled as random walking. Real offices feature office desks and meeting rooms that restrict contacts to localized subsets of coworkers.</li>
+                  <li><strong>Static Vaccine Hesitancy:</strong> In our model, vaccine hesitancy is static. In real epidemics, hesitancy is highly dynamic, fluctuating based on current infection numbers and media influence, creating a feedback loop between viral spread and willingness to seek vaccination.</li>
+                </ul>
+                <p><strong>Conclusion:</strong> EpiSim-ABM successfully shows that individual-level behaviors are crucial to epidemic outcomes. Rather than focusing solely on global rates, public health policies must protect high-density public zones and encourage local individual compliance to achieve lasting containment.</p>
+              </section>
+            </article>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Footer Bar -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span class="status-indicator live"></span>
+        <span id="label-engine-state">Engine Idle</span>
+      </div>
+      <div class="footer-center">
+        <span>Active Workspace: /scratch/epidemic-abm-simulation</span>
+      </div>
+      <div class="footer-right">
+        <span>© 2026 Applied AI Course Project</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/abm/environment.js"></script>
+  <script src="js/abm/agent.js"></script>
+  <script src="js/abm/engine.js"></script>
+  <script src="js/experiments/runner.js"></script>
+  <script src="js/ui/dashboard.js"></script>
+  <script src="js/ui/slides.js"></script>
+  <script>
+    // Tab Switching Helper Logic
+    function switchTab(tabId) {
+      // Remove active classes
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      // Add active classes
+      const selectedBtn = document.getElementById('btn-tab-' + tabId);
+      const selectedContent = document.getElementById('tab-' + tabId);
+      
+      if (selectedBtn && selectedContent) {
+        selectedBtn.classList.add('active');
+        selectedContent.classList.add('active');
+      }
+
+      // Special action: if presentation tab active, update the slide data with the latest sim data
+      if (tabId === 'slides') {
+        if (typeof updatePresentationStats === 'function') {
+          updatePresentationStats();
+        }
+      }
+    }
+  </script>
+</body>
+</html>
